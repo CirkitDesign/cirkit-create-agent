@@ -46,7 +46,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-ini/ini"
 	log "github.com/sirupsen/logrus"
-	//"github.com/sanbornm/go-selfupdate/selfupdate" #included in update.go to change heavily
+	// "github.com/sanbornm/go-selfupdate/selfupdate" #included in update.go to change heavily
 )
 
 var (
@@ -423,6 +423,7 @@ func loop() {
 		"https://app.arduino.cc",
 		"https://board-registration.arduino.cc",
 		"https://*.app.arduino.cc",
+		"https://cirkitdesignerweb.azurewebsites.net",
 	}
 
 	for i := 8990; i < 9001; i++ {
@@ -432,6 +433,12 @@ func loop() {
 		extraOrigins = append(extraOrigins, "http://127.0.0.1:"+port)
 		extraOrigins = append(extraOrigins, "https://127.0.0.1:"+port)
 	}
+
+	port4200 := "4200"
+	extraOrigins = append(extraOrigins, "http://localhost:"+port4200)
+	extraOrigins = append(extraOrigins, "https://localhost:"+port4200)
+	extraOrigins = append(extraOrigins, "http://127.0.0.1:"+port4200)
+	extraOrigins = append(extraOrigins, "https://127.0.0.1:"+port4200)
 
 	allowOrigins := strings.Split(*origins, ",")
 	// We need to trim possible spaces from the origins, otherwise the CORS middleware
