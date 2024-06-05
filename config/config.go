@@ -85,7 +85,7 @@ func GetDefaultConfigDir() *paths.Path {
 		log.Panicf("Can't get user home dir: %s", err)
 	}
 
-	agentConfigDir := paths.New(configDir, "ArduinoCreateAgent")
+	agentConfigDir := paths.New(configDir, "CirkitCreateAgent")
 	if err := agentConfigDir.MkdirAll(); err != nil {
 		log.Panicf("Can't create config dir: %s", err)
 	}
