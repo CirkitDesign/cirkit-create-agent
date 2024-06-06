@@ -153,10 +153,7 @@ jobs:
       #   run: |
       #     aws s3 sync public/ s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}
       #   if: steps.prerelease.outputs.IS_PRE != 'true'
-
-      - name: Install Azure CLI
-        uses: azure/setup-azure-cli@v3
-
+      
       - name: Login to Azure
         uses: azure/login@v1
         with:
@@ -175,6 +172,7 @@ jobs:
             --source ./public \
             --auth-mode key \
             --account-key ${{ secrets.AZURE_STORAGE_KEY }}
+
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
