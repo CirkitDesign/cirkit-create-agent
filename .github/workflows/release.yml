@@ -14,7 +14,12 @@ env:
   PROJECT_NAME: cirkit-create-agent
   TARGET: "/CreateAgent/Stable/"
   VERSION_TARGET: "cirkit-create-static/agent-metadata/"
-  AWS_REGION: "us-east-1" # or https://github.com/aws/aws-cli/issues/5623
+
+  AZURE_STORAGE_ACCOUNT: abacasstorageaccnt
+  AZURE_CONTAINER_NAME: cirkitcreateagentupdates
+  AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+
+  # AWS_REGION: "us-east-1" # or https://github.com/aws/aws-cli/issues/5623
   # KEYCHAIN: "sign.keychain"
   # KEYCHAIN_PASSWORD: keychainpassword # Arbitrary password for a keychain that exists only for the duration of the job, so not secret
   GON_CONFIG_PATH: gon.config.hcl
@@ -119,22 +124,22 @@ jobs:
         run: task go:build
         if: matrix.os == 'macos-12'
 
-      #   # this will create `public/` dir with compressed full bin (<version>/<os>-<arch>.gz) and a json file
-      # - name: Create autoupdate files
-      #   run: go-selfupdate ${{ env.PROJECT_NAME }}${{ matrix.ext }} ${TAG_VERSION}
-      #   if: matrix.arch != '386' && steps.prerelease.outputs.IS_PRE != 'true'
+        # this will create `public/` dir with compressed full bin (<version>/<os>-<arch>.gz) and a json file
+      - name: Create autoupdate files
+        run: go-selfupdate ${{ env.PROJECT_NAME }}${{ matrix.ext }} ${TAG_VERSION}
+        if: matrix.arch != '386' && steps.prerelease.outputs.IS_PRE != 'true'
 
-      #   # for now we do not distribute m1 build, this is a workaround for now
-      # - name: Copy autoupdate file for darwin-arm64 (m1 arch)
-      #   working-directory: public/
-      #   run: |
-      #     cp darwin-amd64.json darwin-arm64.json
-      #     cp ${TAG_VERSION}/darwin-amd64.gz ${TAG_VERSION}/darwin-arm64.gz
-      #   if: matrix.os == 'macos-12' && steps.prerelease.outputs.IS_PRE != 'true'
+        # for now we do not distribute m1 build, this is a workaround for now
+      - name: Copy autoupdate file for darwin-arm64 (m1 arch)
+        working-directory: public/
+        run: |
+          cp darwin-amd64.json darwin-arm64.json
+          cp ${TAG_VERSION}/darwin-amd64.gz ${TAG_VERSION}/darwin-arm64.gz
+        if: matrix.os == 'macos-12' && steps.prerelease.outputs.IS_PRE != 'true'
 
-      # - name: Create autoupdate files for win32
-      #   run: go-selfupdate -platform windows-${{ matrix.arch }} ${{ env.PROJECT_NAME }}${{ matrix.ext }} ${TAG_VERSION}
-      #   if: matrix.arch == '386' && matrix.os == 'windows-2019' && steps.prerelease.outputs.IS_PRE != 'true'
+      - name: Create autoupdate files for win32
+        run: go-selfupdate -platform windows-${{ matrix.arch }} ${{ env.PROJECT_NAME }}${{ matrix.ext }} ${TAG_VERSION}
+        if: matrix.arch == '386' && matrix.os == 'windows-2019' && steps.prerelease.outputs.IS_PRE != 'true'
       
       # - name: configure aws credentials
       #   uses: aws-actions/configure-aws-credentials@v4
@@ -148,6 +153,28 @@ jobs:
       #   run: |
       #     aws s3 sync public/ s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}
       #   if: steps.prerelease.outputs.IS_PRE != 'true'
+
+      - name: Install Azure CLI
+        uses: azure/setup-azure-cli@v3
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Upload autoupdate files to Azure Blob Storage
+        if: steps.prerelease.outputs.IS_PRE != 'true'
+        run: |
+          # Define variables
+          AZURE_BLOB_URL="https://${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ env.AZURE_CONTAINER_NAME }}/"
+
+          # Upload files to Azure Blob Storage
+          az storage blob upload-batch \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --destination ${{ env.AZURE_CONTAINER_NAME }}${{ env.TARGET }} \
+            --source ./public \
+            --auth-mode key \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
