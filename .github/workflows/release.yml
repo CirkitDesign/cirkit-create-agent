@@ -384,6 +384,52 @@ jobs:
       #     aws s3 cp darwin-${{ matrix.arch }}-bundle.json s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}
       #   if: ${{ needs.build.outputs.prerelease != 'true' }}
 
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Upload autoupdate bundle to Azure Blob Storage
+        run: |
+          # Define variables
+          AZURE_BLOB_URL="https://${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ env.AZURE_CONTAINER_NAME }}/"
+
+          # Upload the file
+          az storage blob upload \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --container-name ${{ env.AZURE_CONTAINER_NAME }} \
+            --name "${{ env.TARGET_WITHOUT_SLASH }}/${GITHUB_REF/refs\/tags\//}/CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip" \
+            --file "CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip" \
+            --auth-mode key \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }}
+        if: ${{ needs.build.outputs.prerelease != 'true' }}
+
+      - name: Generate json file used for the new autoupdate
+        run: |
+          cat > darwin-${{ matrix.arch }}-bundle.json <<EOF
+          {
+              "Version": "${GITHUB_REF/refs\/tags\//}",
+              "Sha256": "$(shasum -a 256 CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip | awk '{print $1}' |  xxd -r -p | base64)"
+          }
+          EOF
+        if: ${{ needs.build.outputs.prerelease != 'true' }}
+
+      - name: Upload autoupdate files to Azure Blob Storage
+        run: |
+          # Define variables
+          AZURE_BLOB_URL="https://${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ env.AZURE_CONTAINER_NAME }}/"
+
+          # Upload the JSON file
+          az storage blob upload \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --container-name ${{ env.AZURE_CONTAINER_NAME }} \
+            --name "${{ env.TARGET_WITHOUT_SLASH }}/darwin-${{ matrix.arch }}-bundle.json" \
+            --file "darwin-${{ matrix.arch }}-bundle.json" \
+            --auth-mode key \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }}
+        if: ${{ needs.build.outputs.prerelease != 'true' }}
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
