@@ -14,6 +14,7 @@ env:
   PROJECT_NAME: cirkit-create-agent
   TARGET: "/CreateAgent/Stable/"
   TARGET_WITHOUT_SLASH: "/CreateAgent/Stable"
+  TARGET_WITHOUT_LEADING_AND_TRAILING_SLASH: "CreateAgent/Stable"
   VERSION_TARGET: "cirkit-create-static/agent-metadata/"
 
   AZURE_STORAGE_ACCOUNT: abacasstorageaccnt
@@ -399,7 +400,7 @@ jobs:
           az storage blob upload \
             --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
             --container-name ${{ env.AZURE_CONTAINER_NAME }} \
-            --name "${{ env.TARGET_WITHOUT_SLASH }}/${GITHUB_REF/refs\/tags\//}/CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip" \
+            --name "${{ env.TARGET_WITHOUT_LEADING_AND_TRAILING_SLASH }}/${GITHUB_REF/refs\/tags\//}/CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip" \
             --file "CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip" \
             --auth-mode key \
             --account-key ${{ secrets.AZURE_STORAGE_KEY }}
@@ -424,7 +425,7 @@ jobs:
           az storage blob upload \
             --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
             --container-name ${{ env.AZURE_CONTAINER_NAME }} \
-            --name "${{ env.TARGET_WITHOUT_SLASH }}/darwin-${{ matrix.arch }}-bundle.json" \
+            --name "${{ env.TARGET_WITHOUT_LEADING_AND_TRAILING_SLASH }}/darwin-${{ matrix.arch }}-bundle.json" \
             --file "darwin-${{ matrix.arch }}-bundle.json" \
             --auth-mode key \
             --account-key ${{ secrets.AZURE_STORAGE_KEY }}
