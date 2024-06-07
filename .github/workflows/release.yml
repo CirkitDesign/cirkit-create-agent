@@ -173,7 +173,7 @@ jobs:
             --destination ${{ env.AZURE_CONTAINER_NAME }}${{ env.TARGET_WITHOUT_SLASH }} \
             --source ./public \
             --auth-mode key \
-            --account-key ${{ secrets.AZURE_STORAGE_KEY }}
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
             --overwrite true
 
 
