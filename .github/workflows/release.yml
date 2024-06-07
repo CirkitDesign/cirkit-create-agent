@@ -13,6 +13,7 @@ env:
   # As defined by the Taskfile's PROJECT_NAME variable
   PROJECT_NAME: cirkit-create-agent
   TARGET: "/CreateAgent/Stable/"
+  TARGET_WITHOUT_SLASH: "/CreateAgent/Stable"
   VERSION_TARGET: "cirkit-create-static/agent-metadata/"
 
   AZURE_STORAGE_ACCOUNT: abacasstorageaccnt
@@ -153,7 +154,7 @@ jobs:
       #   run: |
       #     aws s3 sync public/ s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}
       #   if: steps.prerelease.outputs.IS_PRE != 'true'
-      
+
       - name: Login to Azure
         uses: azure/login@v1
         with:
@@ -168,7 +169,7 @@ jobs:
           # Upload files to Azure Blob Storage
           az storage blob upload-batch \
             --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
-            --destination ${{ env.AZURE_CONTAINER_NAME }}${{ env.TARGET }} \
+            --destination ${{ env.AZURE_CONTAINER_NAME }}${{ env.TARGET_WITHOUT_SLASH }} \
             --source ./public \
             --auth-mode key \
             --account-key ${{ secrets.AZURE_STORAGE_KEY }}
