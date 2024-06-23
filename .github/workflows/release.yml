@@ -523,10 +523,13 @@ jobs:
   #       shell: bash
 
   #   env:
-  #     INSTALLER_CERT_WINDOWS_CER: "/tmp/cert.cer"
+  #     # INSTALLER_CERT_WINDOWS_CER: "/tmp/cert.cer"
   #     # We are hardcoding the path for signtool because is not present on the windows PATH env var by default.
   #     # Keep in mind that this path could change when upgrading to a new runner version
-  #     SIGNTOOL_PATH: "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x86/signtool.exe"
+  #     SIGNTOOL_PATH: "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x86/signtool.exe"
+  #     # SIGNTOOL_PATH: "C:/Program Files (x86)/Windows Kits/10/bin/x64/signtool.exe"
+  #     CERT_PASSWORD: ${{ secrets.INSTALLER_CERT_WINDOWS_PASSWORD }}
+  #     CONTAINER_NAME: ${{ secrets.INSTALLER_CERT_WINDOWS_CONTAINER }}
     
   #   strategy:
   #     matrix:
@@ -536,7 +539,7 @@ jobs:
   #     - name: Download artifact
   #       uses: actions/download-artifact@v4
   #       with:
-  #         name: ArduinoCreateAgent-windows-${{ matrix.arch }}
+  #         name: CirkitCreateAgent-windows-${{ matrix.arch }}
       
   #     - name: Save Win signing certificate to file
   #       run: echo "${{ secrets.INSTALLER_CERT_WINDOWS_CER }}" | base64 --decode > ${{ env.INSTALLER_CERT_WINDOWS_CER}}
@@ -547,14 +550,50 @@ jobs:
   #         CONTAINER_NAME: ${{ secrets.INSTALLER_CERT_WINDOWS_CONTAINER }}
   #         # https://stackoverflow.com/questions/17927895/automate-extended-validation-ev-code-signing-with-safenet-etoken
   #       run: | 
-  #         "${{ env.SIGNTOOL_PATH }}" sign -d "Arduino Create Agent" -f ${{ env.INSTALLER_CERT_WINDOWS_CER}} -csp "eToken Base Cryptographic Provider" -k "[{{${{ env.CERT_PASSWORD }}}}]=${{ env.CONTAINER_NAME }}" -fd sha256 -tr http://timestamp.digicert.com -td SHA256 -v "ArduinoCreateAgent-${GITHUB_REF##*/}-windows-${{ matrix.arch }}-installer.exe"
+  #         "${{ env.SIGNTOOL_PATH }}" sign -d "Cirkit Create Agent" -f ${{ env.INSTALLER_CERT_WINDOWS_CER}} -csp "eToken Base Cryptographic Provider" -k "[{{${{ env.CERT_PASSWORD }}}}]=${{ env.CONTAINER_NAME }}" -fd sha256 -tr http://timestamp.digicert.com -td SHA256 -v "CirkitCreateAgent-${GITHUB_REF##*/}-windows-${{ matrix.arch }}-installer.exe"
 
   #     - name: Upload artifacts
   #       uses: actions/upload-artifact@v4
   #       with:
   #         if-no-files-found: error
-  #         name: ArduinoCreateAgent-windows-${{ matrix.arch }}-signed
-  #         path: ArduinoCreateAgent-*-windows-${{ matrix.arch }}-installer.exe
+  #         name: CirkitCreateAgent-windows-${{ matrix.arch }}-signed
+  #         path: CirkitCreateAgent-*-windows-${{ matrix.arch }}-installer.exe
+
+  sign-windows:
+    runs-on: [self-hosted, windows-sign-pc]
+    needs: package
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      SIGNTOOL_PATH: "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x86/signtool.exe"
+      CERT_NAME: "Cirkit Design LLC"  # Replace with your certificate's friendly name
+      CSP_NAME: "eToken Base Cryptographic Provider"
+      CONTAINER_NAME: ${{ secrets.INSTALLER_CERT_WINDOWS_CONTAINER }}
+      CERT_PASSWORD: ${{ secrets.INSTALLER_CERT_WINDOWS_PASSWORD }}
+
+    strategy:
+      matrix:
+        arch: [amd64, 386]
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ArduinoCreateAgent-windows-${{ matrix.arch }}
+      
+      - name: Sign EXE
+        run: |
+          "${{ env.SIGNTOOL_PATH }}" sign /fd SHA256 /n "${{ env.CERT_NAME }}" /csp "${{ env.CSP_NAME }}" /kc "${{ env.CONTAINER_NAME }}" /p "${{ env.CERT_PASSWORD }}" /tr http://timestamp.digicert.com /td SHA256 /v "CirkitCreateAgent-${GITHUB_REF##*/}-windows-${{ matrix.arch }}-installer.exe"
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: CirkitCreateAgent-windows-${{ matrix.arch }}-signed
+          path: CirkitCreateAgent-*-windows-${{ matrix.arch }}-installer.exe
 
   # This job will generate a dmg mac installer, sign/notarize it.
   generate-sign-dmg:
