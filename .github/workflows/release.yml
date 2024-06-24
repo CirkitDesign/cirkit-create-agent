@@ -693,88 +693,86 @@ jobs:
           path: CirkitCreateAgent*.tar
           if-no-files-found: error
 
-  # create-release:
-  #   runs-on: ubuntu-20.04
-  #   environment: production
-  #   needs: [build, generate-sign-dmg, sign-windows]
+  create-release:
+    runs-on: ubuntu-20.04
+    environment: production
+    needs: [build, generate-sign-dmg, sign-windows]
 
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0 # fetch all history for the create changelog step to work properly
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # fetch all history for the create changelog step to work properly
 
-  #     - name: Download artifact
-  #       uses: actions/download-artifact@v4 # download all the artifacts
+      - name: Download artifact
+        uses: actions/download-artifact@v4 # download all the artifacts
 
-  #     #  mandatory step because upload-release-action does not support multiple folders
-  #     - name: prepare artifacts for the release
-  #       run: |
-  #         mkdir release
-  #         chmod -v +x ArduinoCreateAgent-linux-amd64/*.run
-  #         mv -v ArduinoCreateAgent-linux-amd64/* release/
-  #         cat ArduinoCreateAgent-osx-amd64/*.tar | tar -xvf - -i -C release/
-  #         rm -v release/._ArduinoCreateAgent*.dmg
-  #         mv -v ArduinoCreateAgent-windows*-signed/* release/
+      #  mandatory step because upload-release-action does not support multiple folders
+      - name: prepare artifacts for the release
+        run: |
+          mkdir release
+          chmod -v +x CirkitCreateAgent-linux-amd64/*.run
+          mv -v CirkitCreateAgent-linux-amd64/* release/
+          cat CirkitCreateAgent-osx-amd64/*.tar | tar -xvf - -i -C release/
+          rm -v release/._CirkitCreateAgent*.dmg
+          mv -v CirkitCreateAgent-windows*-signed/* release/
 
-  #     - name: VirusTotal Scan
-  #       id: virustotal_step
-  #       uses: crazy-max/ghaction-virustotal@v4
-  #       with:
-  #         vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
-  #         update_release_body: false # `true` won't work because trigger type is not release
-  #         files: |
-  #           release/*.exe
-  #           ${{ env.PROJECT_NAME }}-windows-2019-386/${{ env.PROJECT_NAME }}.exe
-  #           ${{ env.PROJECT_NAME }}-windows-2019-amd64/${{ env.PROJECT_NAME }}.exe
+      # - name: VirusTotal Scan
+      #   id: virustotal_step
+      #   uses: crazy-max/ghaction-virustotal@v4
+      #   with:
+      #     vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
+      #     update_release_body: false # `true` won't work because trigger type is not release
+      #     files: |
+      #       release/*.exe
+      #       ${{ env.PROJECT_NAME }}-windows-2019-386/${{ env.PROJECT_NAME }}.exe
+      #       ${{ env.PROJECT_NAME }}-windows-2019-amd64/${{ env.PROJECT_NAME }}.exe
 
-  #     - name: Create changelog
-  #       uses: arduino/create-changelog@v1
-  #       with:
-  #         tag-regex: '^[0-9]+\.[0-9]+\.[0-9]+.*$'
-  #         filter-regex: '^\[(skip|changelog)[ ,-](skip|changelog)\].*'
-  #         case-insensitive-regex: true
-  #         changelog-file-path: "CHANGELOG.md"
+      - name: Create changelog
+        uses: arduino/create-changelog@v1
+        with:
+          tag-regex: '^[0-9]+\.[0-9]+\.[0-9]+.*$'
+          filter-regex: '^\[(skip|changelog)[ ,-](skip|changelog)\].*'
+          case-insensitive-regex: true
+          changelog-file-path: "CHANGELOG.md"
 
-  #     - name: Organize release body message #use sed to clean and format the output markdown style
-  #       id: release_body
-  #       run: |
-  #         echo "RBODY<<EOF" >> $GITHUB_OUTPUT
-  #         echo "$(cat CHANGELOG.md)" >> $GITHUB_OUTPUT
-  #         echo "<details close>" >> $GITHUB_OUTPUT
-  #         echo "<summary>VirusTotal analysis 🛡</summary>" >> $GITHUB_OUTPUT
-  #         echo "" >> $GITHUB_OUTPUT
-  #         echo "$(echo ${{ steps.virustotal_step.outputs.analysis}} | sed 's/release\///g' | sed 's/,/\n/g' | sed 's/^/- [/' | sed 's/=/](/' | sed 's/$/)/')" >> $GITHUB_OUTPUT
-  #         echo "</details>" >> $GITHUB_OUTPUT
-  #         echo "EOF" >> $GITHUB_OUTPUT
+      - name: Organize release body message #use sed to clean and format the output markdown style
+        id: release_body
+        run: |
+          echo "RBODY<<EOF" >> $GITHUB_OUTPUT
+          echo "$(cat CHANGELOG.md)" >> $GITHUB_OUTPUT
+          echo "<details close>" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "</details>" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-  #     - name: Create Github Release and upload artifacts
-  #       uses: ncipollo/release-action@v1
-  #       with:
-  #         token: ${{ secrets.GITHUB_TOKEN }}
-  #         body: ${{ steps.release_body.outputs.RBODY}}
-  #         draft: false
-  #         prerelease: ${{ needs.build.outputs.prerelease }}
-  #         # NOTE: "Artifact is a directory" warnings are expected and don't indicate a problem
-  #         # (all the files we need are in the DIST_DIR root)
-  #         artifacts: release/*
+      - name: Create Github Release and upload artifacts
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: ${{ steps.release_body.outputs.RBODY}}
+          draft: false
+          prerelease: ${{ needs.build.outputs.prerelease }}
+          # NOTE: "Artifact is a directory" warnings are expected and don't indicate a problem
+          # (all the files we need are in the DIST_DIR root)
+          artifacts: release/*
 
-  #     - name: configure aws credentials
-  #       uses: aws-actions/configure-aws-credentials@v4
-  #       with:
-  #         role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-  #         role-session-name: "github_${{ env.PROJECT_NAME }}"
-  #         aws-region: ${{ env.AWS_REGION }}
-  #       if: ${{ needs.build.outputs.prerelease != 'true' }}
+      # - name: configure aws credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+      #     role-session-name: "github_${{ env.PROJECT_NAME }}"
+      #     aws-region: ${{ env.AWS_REGION }}
+      #   if: ${{ needs.build.outputs.prerelease != 'true' }}
 
-  #     - name: Upload release files on Arduino downloads servers
-  #       run: aws s3 sync release/ s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}
-  #       if: ${{ needs.build.outputs.prerelease != 'true' }}
+      # - name: Upload release files on Arduino downloads servers
+      #   run: aws s3 sync release/ s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}
+      #   if: ${{ needs.build.outputs.prerelease != 'true' }}
 
-  #     - name: Update version file (used by frontend to trigger autoupdate and create filename)
-  #       run: |
-  #         echo {\"Version\": \"${GITHUB_REF##*/}\"} > /tmp/agent-version.json
-  #         # TODO remove this when we will have a new frontend
-  #         aws s3 cp /tmp/agent-version.json s3://${{ env.VERSION_TARGET }}
-  #         aws s3 cp /tmp/agent-version.json s3://${{ secrets.DOWNLOADS_BUCKET }}/agent-metadata/
-  #       if: ${{ needs.build.outputs.prerelease != 'true' }}
+      # - name: Update version file (used by frontend to trigger autoupdate and create filename)
+      #   run: |
+      #     echo {\"Version\": \"${GITHUB_REF##*/}\"} > /tmp/agent-version.json
+      #     # TODO remove this when we will have a new frontend
+      #     aws s3 cp /tmp/agent-version.json s3://${{ env.VERSION_TARGET }}
+      #     aws s3 cp /tmp/agent-version.json s3://${{ secrets.DOWNLOADS_BUCKET }}/agent-metadata/
+      #   if: ${{ needs.build.outputs.prerelease != 'true' }}
