@@ -699,6 +699,10 @@ jobs:
     needs: [build, generate-sign-dmg, sign-windows]
 
     steps:
+      - name: Set env vars
+        run: |
+          echo "TAG_VERSION=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -716,6 +720,8 @@ jobs:
           cat CirkitCreateAgent-osx-amd64/*${{ env.TAG_VERSION }}*.tar | tar -xvf - -i -C release/
           rm -v release/._CirkitCreateAgent*.dmg
           mv -v CirkitCreateAgent-windows*-signed/*${{ env.TAG_VERSION }}* release/
+
+
 
       # - name: VirusTotal Scan
       #   id: virustotal_step
