@@ -559,6 +559,11 @@ jobs:
   #         name: CirkitCreateAgent-windows-${{ matrix.arch }}-signed
   #         path: CirkitCreateAgent-*-windows-${{ matrix.arch }}-installer.exe
 
+ 
+
+
+
+
   sign-windows:
     runs-on: [self-hosted, windows-sign-pc]
     needs: package
@@ -569,7 +574,7 @@ jobs:
 
     env:
       SIGNTOOL_PATH: "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x86/signtool.exe"
-      CERT_NAME: "Cirkit Design LLC"  # Replace with your certificate's friendly name
+      CERT_NAME: "Cirkit Design LLC"
       CSP_NAME: "eToken Base Cryptographic Provider"
       CONTAINER_NAME: ${{ secrets.INSTALLER_CERT_WINDOWS_CONTAINER }}
       CERT_PASSWORD: ${{ secrets.INSTALLER_CERT_WINDOWS_PASSWORD }}
@@ -708,6 +713,10 @@ jobs:
         with:
           fetch-depth: 0 # fetch all history for the create changelog step to work properly
 
+      - name: Clear old artifacts
+        run: |
+          rm -f CirkitCreateAgent-*-windows-*-installer.exe
+
       - name: Download artifact
         uses: actions/download-artifact@v4 # download all the artifacts
 
@@ -715,13 +724,11 @@ jobs:
       - name: prepare artifacts for the release
         run: |
           mkdir release
-          chmod -v +x CirkitCreateAgent-linux-amd64/*${{ env.TAG_VERSION }}*.run
-          mv -v CirkitCreateAgent-linux-amd64/*${{ env.TAG_VERSION }}* release/
-          cat CirkitCreateAgent-osx-amd64/*${{ env.TAG_VERSION }}*.tar | tar -xvf - -i -C release/
+          chmod -v +x CirkitCreateAgent-linux-amd64/*.run
+          mv -v CirkitCreateAgent-linux-amd64/* release/
+          cat CirkitCreateAgent-osx-amd64/*.tar | tar -xvf - -i -C release/
           rm -v release/._CirkitCreateAgent*.dmg
-          mv -v CirkitCreateAgent-windows*-signed/*${{ env.TAG_VERSION }}* release/
-
-
+          mv -v CirkitCreateAgent-windows*-signed/* release/
 
       # - name: VirusTotal Scan
       #   id: virustotal_step
@@ -782,3 +789,42 @@ jobs:
       #     aws s3 cp /tmp/agent-version.json s3://${{ env.VERSION_TARGET }}
       #     aws s3 cp /tmp/agent-version.json s3://${{ secrets.DOWNLOADS_BUCKET }}/agent-metadata/
       #   if: ${{ needs.build.outputs.prerelease != 'true' }}
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+
+
+      - name: Upload release files to Azure Blob Storage
+        if: ${{ needs.build.outputs.prerelease != 'true' }}
+        run: |
+          AZURE_BLOB_URL="https://${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ env.AZURE_CONTAINER_NAME }}/"
+          az storage blob upload-batch \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --destination ${{ env.AZURE_CONTAINER_NAME }}${{ env.TARGET }} \
+            --source release \
+            --auth-mode key \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
+            --overwrite true
+
+      - name: Update version file in Azure Blob Storage
+        if: ${{ needs.build.outputs.prerelease != 'true' }}
+        run: |
+          echo {\"Version\": \"${GITHUB_REF##*/}\"} > /tmp/agent-version.json
+          az storage blob upload \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --container-name ${{ env.AZURE_CONTAINER_NAME }} \
+            --name "${{ env.VERSION_TARGET }}/agent-version.json" \
+            --file /tmp/agent-version.json \
+            --auth-mode key \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }}
+          az storage blob upload \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --container-name ${{ env.AZURE_CONTAINER_NAME }} \
+            --name "agent-metadata/agent-version.json" \
+            --file /tmp/agent-version.json \
+            --auth-mode key \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }}
+
