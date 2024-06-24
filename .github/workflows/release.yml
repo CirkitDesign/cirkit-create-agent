@@ -711,11 +711,11 @@ jobs:
       - name: prepare artifacts for the release
         run: |
           mkdir release
-          chmod -v +x CirkitCreateAgent-linux-amd64/*.run
-          mv -v CirkitCreateAgent-linux-amd64/* release/
-          cat CirkitCreateAgent-osx-amd64/*.tar | tar -xvf - -i -C release/
+          chmod -v +x CirkitCreateAgent-linux-amd64/*${{ env.TAG_VERSION }}*.run
+          mv -v CirkitCreateAgent-linux-amd64/*${{ env.TAG_VERSION }}* release/
+          cat CirkitCreateAgent-osx-amd64/*${{ env.TAG_VERSION }}*.tar | tar -xvf - -i -C release/
           rm -v release/._CirkitCreateAgent*.dmg
-          mv -v CirkitCreateAgent-windows*-signed/* release/
+          mv -v CirkitCreateAgent-windows*-signed/*${{ env.TAG_VERSION }}* release/
 
       # - name: VirusTotal Scan
       #   id: virustotal_step
