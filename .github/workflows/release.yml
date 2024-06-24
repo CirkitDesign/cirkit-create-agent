@@ -576,7 +576,7 @@ jobs:
 
     strategy:
       matrix:
-        arch: [amd64, 386]
+        arch: [amd64]
 
     steps:
       - name: Download artifact
