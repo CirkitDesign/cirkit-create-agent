@@ -646,12 +646,24 @@ jobs:
       - name: Tar files to keep permissions
         run: tar -cvf CirkitCreateAgent-${GITHUB_REF##*/}-osx-${{ matrix.arch }}-installer.tar CirkitCreateAgent-${GITHUB_REF##*/}-osx-${{ matrix.arch }}-installer.dmg
 
+      # # Create another tar file labeled as latest
+      # - name: Create latest tar file
+      #   run: tar -cvf CirkitCreateAgent-latest-osx-${{ matrix.arch }}-installer.tar CirkitCreateAgent-${GITHUB_REF##*/}-osx-${{ matrix.arch }}-installer.dmg
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: CirkitCreateAgent-osx-${{ matrix.arch }}
           path: CirkitCreateAgent*.tar
           if-no-files-found: error
+      
+      # # Upload the latest tar file as a separate artifact
+      # - name: Upload latest artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: CirkitCreateAgent-latest-osx-${{ matrix.arch }}
+      #     path: CirkitCreateAgent-latest-osx-${{ matrix.arch }}-installer.tar
+      #     if-no-files-found: error
 
   create-release:
     runs-on: ubuntu-20.04
@@ -681,6 +693,11 @@ jobs:
           cat CirkitCreateAgent-osx-amd64/*.tar | tar -xvf - -i -C release/
           rm -v release/._CirkitCreateAgent*.dmg
           mv -v CirkitCreateAgent-windows*-signed/* release/
+          # Create copies of the files with "latest" label
+          for file in release/*; do
+            latest_file=$(echo $file | sed "s/${TAG_VERSION}/latest/")
+            cp -v "$file" "$latest_file"
+          done
 
       # - name: VirusTotal Scan
       #   id: virustotal_step
