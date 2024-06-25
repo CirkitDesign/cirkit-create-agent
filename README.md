@@ -1,5 +1,5 @@
 # arduino-create-agent
-# v0.4.9
+# v0.5.0
 
 [![License: AGPL v3.0](https://img.shields.io/badge/License-AGPL%20v3.0-blue)](https://www.gnu.org/licenses/agpl-3.0.html)
 [![Test Go status](https://github.com/arduino/arduino-create-agent/actions/workflows/test-go-task.yml/badge.svg)](https://github.com/arduino/arduino-create-agent/actions/workflows/test-go-task.yml)
