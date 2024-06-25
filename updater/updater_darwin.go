@@ -59,7 +59,7 @@ func checkForUpdates(currentVersion string, updateURL string, cmdName string) (s
 	if currentAppPath.Ext() != ".app" {
 		return "", fmt.Errorf("could not find app root in %s", executablePath)
 	}
-	oldAppPath := currentAppPath.Parent().Join("ArduinoCreateAgent.old.app")
+	oldAppPath := currentAppPath.Parent().Join("CirkitCreateAgent.old.app")
 	if oldAppPath.Exist() {
 		return "", fmt.Errorf("temp app already exists: %s, cannot update", oldAppPath)
 	}
@@ -80,12 +80,12 @@ func checkForUpdates(currentVersion string, updateURL string, cmdName string) (s
 		return "", nil
 	}
 
-	tmp := paths.TempDir().Join("arduino-create-agent")
+	tmp := paths.TempDir().Join("cirkit-create-agent")
 	if err := tmp.MkdirAll(); err != nil {
 		return "", err
 	}
 	tmpZip := tmp.Join("update.zip")
-	tmpAppPath := tmp.Join("ArduinoCreateAgent-update.app")
+	tmpAppPath := tmp.Join("CirkitCreateAgent-update.app")
 	defer tmp.RemoveAll()
 
 	// Download the update.
@@ -95,7 +95,7 @@ func checkForUpdates(currentVersion string, updateURL string, cmdName string) (s
 	// info.Version == "1.2.8"
 	// runtime.GOARCH: "amd64"
 	// downloadURL: "https://downloads.arduino.cc/CreateAgent/Stable/1.2.8/ArduinoCreateAgent.app_arm64_notarized.zip"
-	downloadURL := updateURL + cmdName + "/" + info.Version + "/ArduinoCreateAgent.app_" + runtime.GOARCH + "_notarized.zip"
+	downloadURL := updateURL + cmdName + "/" + info.Version + "/CirkitCreateAgent.app_" + runtime.GOARCH + "_notarized.zip"
 	logrus.WithField("url", downloadURL).Info("Downloading update")
 	download, err := fetch(downloadURL)
 	if err != nil {
