@@ -16,6 +16,7 @@ env:
   TARGET_WITHOUT_SLASH: "/CreateAgent/Stable"
   TARGET_WITHOUT_LEADING_AND_TRAILING_SLASH: "CreateAgent/Stable"
   VERSION_TARGET: "cirkit-create-static/agent-metadata/"
+  VERSION_TARGET_WITHOUT_SLASH: "cirkit-create-static/agent-metadata"
 
   AZURE_STORAGE_ACCOUNT: abacasstorageaccnt
   AZURE_CONTAINER_NAME: cirkitcreateagentupdates
@@ -584,6 +585,11 @@ jobs:
         arch: [amd64, 386]
 
     steps:
+
+      - name: Clear old artifacts
+        run: |
+          rm -f CirkitCreateAgent-windows-*
+
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
@@ -713,9 +719,6 @@ jobs:
         with:
           fetch-depth: 0 # fetch all history for the create changelog step to work properly
 
-      - name: Clear old artifacts
-        run: |
-          rm -f CirkitCreateAgent-*-windows-*-installer.exe
 
       - name: Download artifact
         uses: actions/download-artifact@v4 # download all the artifacts
@@ -795,15 +798,13 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-
-
       - name: Upload release files to Azure Blob Storage
         if: ${{ needs.build.outputs.prerelease != 'true' }}
         run: |
           AZURE_BLOB_URL="https://${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ env.AZURE_CONTAINER_NAME }}/"
           az storage blob upload-batch \
             --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
-            --destination ${{ env.AZURE_CONTAINER_NAME }}${{ env.TARGET }} \
+            --destination ${{ env.AZURE_CONTAINER_NAME }}${{ env.TARGET_WITHOUT_SLASH }} \
             --source release \
             --auth-mode key \
             --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
@@ -816,7 +817,7 @@ jobs:
           az storage blob upload \
             --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
             --container-name ${{ env.AZURE_CONTAINER_NAME }} \
-            --name "${{ env.VERSION_TARGET }}/agent-version.json" \
+            --name "${{ env.VERSION_TARGET_WITHOUT_SLASH }}/agent-version.json" \
             --file /tmp/agent-version.json \
             --auth-mode key \
             --account-key ${{ secrets.AZURE_STORAGE_KEY }}
