@@ -42,7 +42,7 @@ func GetDataDir() *paths.Path {
 	if err != nil {
 		log.Panicf("Could not get user dir: %s", err)
 	}
-	dataDir := paths.New(userDir, ".arduino-create")
+	dataDir := paths.New(userDir, ".cirkit-create")
 	if err := dataDir.MkdirAll(); err != nil {
 		log.Panicf("Could not create data dir: %s", err)
 	}
