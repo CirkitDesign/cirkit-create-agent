@@ -820,12 +820,14 @@ jobs:
             --name "${{ env.VERSION_TARGET_WITHOUT_SLASH }}/agent-version.json" \
             --file /tmp/agent-version.json \
             --auth-mode key \
-            --account-key ${{ secrets.AZURE_STORAGE_KEY }}
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
+            --overwrite true
           az storage blob upload \
             --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
             --container-name ${{ env.AZURE_CONTAINER_NAME }} \
             --name "agent-metadata/agent-version.json" \
             --file /tmp/agent-version.json \
             --auth-mode key \
-            --account-key ${{ secrets.AZURE_STORAGE_KEY }}
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
+            --overwrite true
 
