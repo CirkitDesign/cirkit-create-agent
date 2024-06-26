@@ -85,7 +85,7 @@ func (s *Systray) start() {
 		for {
 			select {
 			case <-mURL.ClickedCh:
-				_ = open.Start("https://cirkitdesigner.com")
+				_ = open.Start("https://www.cirkitdesigner.com")
 			case <-mDebug.ClickedCh:
 				_ = open.Start(s.DebugURL())
 			case <-mConfig.ClickedCh:
