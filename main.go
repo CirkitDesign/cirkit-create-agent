@@ -85,7 +85,7 @@ var (
 	updateURL         = iniConf.String("updateUrl", "", "")
 	verbose           = iniConf.Bool("v", true, "show debug logging")
 	crashreport       = iniConf.Bool("crashreport", false, "enable crashreport logging")
-	autostartMacOS    = iniConf.Bool("autostartMacOS", true, "the Arduino Create Agent is able to start automatically after login on macOS (launchd agent)")
+	autostartMacOS    = iniConf.Bool("autostartMacOS", true, "the Cirkit Create Agent is able to start automatically after login on macOS (launchd agent)")
 	installCerts      = iniConf.Bool("installCerts", false, "install the HTTPS certificate for Safari and keep it updated")
 )
 
@@ -178,7 +178,7 @@ func loop() {
 	// If we are updating manually from 1.2.7 to 1.3.0 we have to uninstall the old agent manually first.
 	// This check will inform the user if he needs to run the uninstall first
 	if runtime.GOOS == "darwin" && oldInstallExists() {
-		utilities.UserPrompt("Old agent installation of the Arduino Create Agent found, please uninstall it before launching the new one", "\"OK\"", "OK", "OK", "Error")
+		utilities.UserPrompt("Old agent installation of the Cirkit Create Agent found, please uninstall it before launching the new one", "\"OK\"", "OK", "OK", "Error")
 		os.Exit(0)
 	}
 
@@ -193,7 +193,7 @@ func loop() {
 	var configPath *paths.Path
 
 	// see if the env var is defined, if it is take the config from there, this will override the default path
-	if envConfig := os.Getenv("ARDUINO_CREATE_AGENT_CONFIG"); envConfig != "" {
+	if envConfig := os.Getenv("CIRKIT_CREATE_AGENT_CONFIG"); envConfig != "" {
 		configPath = paths.New(envConfig)
 		if configPath.NotExist() {
 			log.Panicf("config from env var %s does not exists", envConfig)
@@ -378,7 +378,7 @@ func loop() {
 			if expired, err := cert.IsExpired(); err != nil {
 				log.Errorf("cannot check if certificates are expired something went wrong: %s", err)
 			} else if expired {
-				buttonPressed := utilities.UserPrompt("The Arduino Agent needs a local HTTPS certificate to work correctly with Safari.\nYour certificate is expired or close to expiration. Do you want to update it?", "{\"Do not update\", \"Update the certificate for Safari\"}", "Update the certificate for Safari", "Update the certificate for Safari", "Arduino Agent: Update certificate")
+				buttonPressed := utilities.UserPrompt("The Cirkit Agent needs a local HTTPS certificate to work correctly with Safari.\nYour certificate is expired or close to expiration. Do you want to update it?", "{\"Do not update\", \"Update the certificate for Safari\"}", "Update the certificate for Safari", "Update the certificate for Safari", "Cirkit Agent: Update certificate")
 				if buttonPressed {
 					err := cert.UninstallCertificates()
 					if err != nil {
@@ -518,14 +518,14 @@ func loop() {
 
 // oldInstallExists will return true if an old installation of the agent exists (on macos) and is not the process running
 func oldInstallExists() bool {
-	oldAgentPath := config.GetDefaultHomeDir().Join("Applications", "ArduinoCreateAgent")
+	oldAgentPath := config.GetDefaultHomeDir().Join("Applications", "CirkitCreateAgent")
 	currentBinary, _ := os.Executable()
 	// if the current running binary is the old one we don't need to do anything
 	binIsOld, _ := paths.New(currentBinary).IsInsideDir(oldAgentPath)
 	if binIsOld {
 		return false
 	}
-	return oldAgentPath.Join("ArduinoCreateAgent.app").Exist()
+	return oldAgentPath.Join("CirkitCreateAgent.app").Exist()
 }
 
 func parseIni(filename string) (args []string, err error) {
@@ -562,5 +562,5 @@ func installCertsKeyExists(filename string) (bool, error) {
 }
 
 func promptInstallCertsSafari() bool {
-	return utilities.UserPrompt("The Arduino Agent needs a local HTTPS certificate to work correctly with Safari.\nIf you use Safari, you need to install it.", "{\"Do not install\", \"Install the certificate for Safari\"}", "Install the certificate for Safari", "Install the certificate for Safari", "Arduino Agent: Install certificate")
+	return utilities.UserPrompt("The Cirkit Agent needs a local HTTPS certificate to work correctly with Safari.\nIf you use Safari, you need to install it.", "{\"Do not install\", \"Install the certificate for Safari\"}", "Install the certificate for Safari", "Install the certificate for Safari", "Cirkit Agent: Install certificate")
 }

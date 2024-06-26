@@ -46,7 +46,7 @@ func InstallCertificate(cert *paths.Path) error {
 	p := C.installCert(ccert)
 	s := C.GoString(p)
 	if len(s) != 0 {
-		utilities.UserPrompt(s, "\"OK\"", "OK", "OK", "Arduino Agent: Error installing certificates")
+		utilities.UserPrompt(s, "\"OK\"", "OK", "OK", "Cirkit Agent: Error installing certificates")
 		UninstallCertificates()
 		return errors.New(s)
 	}
@@ -60,7 +60,7 @@ func UninstallCertificates() error {
 	p := C.uninstallCert()
 	s := C.GoString(p)
 	if len(s) != 0 {
-		utilities.UserPrompt(s, "\"OK\"", "OK", "OK", "Arduino Agent: Error uninstalling certificates")
+		utilities.UserPrompt(s, "\"OK\"", "OK", "OK", "Cirkit Agent: Error uninstalling certificates")
 		return errors.New(s)
 	}
 	return nil
@@ -75,7 +75,7 @@ func GetExpirationDate() (time.Time, error) {
 	err := C.getExpirationDate(&expirationDateLong)
 	errString := C.GoString(err)
 	if len(errString) > 0 {
-		utilities.UserPrompt(errString, "\"OK\"", "OK", "OK", "Arduino Agent: Error retrieving expiration date")
+		utilities.UserPrompt(errString, "\"OK\"", "OK", "OK", "Cirkit Agent: Error retrieving expiration date")
 		return time.Time{}, errors.New(errString)
 	}
 
@@ -94,7 +94,7 @@ func GetDefaultBrowserName() string {
 
 // CertInKeychain checks if the certificate is stored inside the keychain
 func CertInKeychain() bool {
-	log.Infof("Checking if the Arduino certificate is in the keychain")
+	log.Infof("Checking if the Cirkit certificate is in the keychain")
 
 	certInKeychain := C.certInKeychain()
 	return bool(certInKeychain)

@@ -287,5 +287,5 @@ func GenerateAndInstallCertificates(certDir *paths.Path) {
 		log.Errorf("cannot install certificates something went wrong: %s", err)
 		DeleteCertificates(certDir)
 	}
-	utilities.UserPrompt("The HTTPS certificate has been installed correctly.", "{\"OK\"}", "OK", "OK", "Arduino Agent: HTTPS certificate installation")
+	utilities.UserPrompt("The HTTPS certificate has been installed correctly.", "{\"OK\"}", "OK", "OK", "Cirkit Agent: HTTPS certificate installation")
 }
