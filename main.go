@@ -424,6 +424,7 @@ func loop() {
 		"https://board-registration.arduino.cc",
 		"https://*.app.arduino.cc",
 		"https://cirkitdesignerweb.azurewebsites.net",
+		"https://app.cirkitdesigner.com",
 	}
 
 	for i := 8990; i < 9001; i++ {
