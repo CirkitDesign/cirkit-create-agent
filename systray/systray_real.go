@@ -57,7 +57,7 @@ func (s *Systray) start() {
 	menuVer.Disable()
 
 	// Add links
-	mURL := systray.AddMenuItem("Go to Arduino Cloud", "Arduino Cloud")
+	mURL := systray.AddMenuItem("Go to Cirkit Designer", "Cirkit Designer")
 	mDebug := systray.AddMenuItem("Open Debug Console", "Debug console")
 	mConfig := systray.AddMenuItem("Open Configuration", "Config File")
 
@@ -85,7 +85,7 @@ func (s *Systray) start() {
 		for {
 			select {
 			case <-mURL.ClickedCh:
-				_ = open.Start("https://app.arduino.cc")
+				_ = open.Start("https://www.cirkitdesigner.com")
 			case <-mDebug.ClickedCh:
 				_ = open.Start(s.DebugURL())
 			case <-mConfig.ClickedCh:
@@ -94,7 +94,7 @@ func (s *Systray) start() {
 				RemoveCrashes()
 				s.updateMenuItem(mRmCrashes, config.LogsIsEmpty())
 			case <-mManageCerts.ClickedCh:
-				infoMsg := "The Arduino Agent needs a local HTTPS certificate to work correctly with Safari.\n\nYour HTTPS certificate status:\n"
+				infoMsg := "The Cirkit Agent needs a local HTTPS certificate to work correctly with Safari.\n\nYour HTTPS certificate status:\n"
 				buttons := "{\"Install the certificate for Safari\", \"OK\"}"
 				toPress := "Install the certificate for Safari"
 				certDir := config.GetCertificatesDir()
@@ -106,7 +106,7 @@ func (s *Systray) start() {
 					infoMsg = infoMsg + "- Certificate installed:\t\tYes\n- Certificate trusted:\t\tYes\n- Certificate expiration:\t" + expDate.Format(time.DateTime)
 					buttons = "{\"Uninstall the certificate for Safari\", \"OK\"}"
 					toPress = "Uninstall the certificate for Safari"
-					pressedButton := utilities.UserPrompt(infoMsg, buttons, "OK", toPress, "Arduino Agent: Manage HTTPS certificate")
+					pressedButton := utilities.UserPrompt(infoMsg, buttons, "OK", toPress, "Cirkit Agent: Manage HTTPS certificate")
 					if pressedButton {
 						err := cert.UninstallCertificates()
 						if err != nil {
@@ -117,13 +117,13 @@ func (s *Systray) start() {
 							if err != nil {
 								log.Errorf("cannot set installCerts value in config.ini: %s", err)
 							}
-							utilities.UserPrompt("The HTTPS certificate has been uninstalled.", "{\"OK\"}", "OK", "OK", "Arduino Agent: HTTPS certificate installation")
+							utilities.UserPrompt("The HTTPS certificate has been uninstalled.", "{\"OK\"}", "OK", "OK", "Cirkit Agent: HTTPS certificate installation")
 						}
 						s.Restart()
 					}
 				} else {
 					infoMsg = infoMsg + "- Certificate installed:\t\tNo\n- Certificate trusted:\t\tN/A\n- Certificate expiration:\tN/A"
-					pressedButton := utilities.UserPrompt(infoMsg, buttons, "OK", toPress, "Arduino Agent: Manage HTTPS certificate")
+					pressedButton := utilities.UserPrompt(infoMsg, buttons, "OK", toPress, "Cirkit Agent: Manage HTTPS certificate")
 					if pressedButton {
 						cert.GenerateAndInstallCertificates(certDir)
 						err := config.SetInstallCertsIni(s.currentConfigFilePath.String(), "true")

@@ -17,9 +17,9 @@ package design
 
 import . "goa.design/goa/v3/dsl"
 
-var _ = API("arduino-create-agent", func() {
-	Title("Arduino Create Agent")
-	Description(`A companion of Arduino Create. 
+var _ = API("cirkit-create-agent", func() {
+	Title("Cirkit Create Agent")
+	Description(`A companion of Cirkit Designer. 
 	Allows the website to perform operations on the user computer, 
 	such as detecting which boards are connected and upload sketches on them.`)
 	HTTP(func() {

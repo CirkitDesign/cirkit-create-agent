@@ -42,7 +42,7 @@ func GetDataDir() *paths.Path {
 	if err != nil {
 		log.Panicf("Could not get user dir: %s", err)
 	}
-	dataDir := paths.New(userDir, ".arduino-create")
+	dataDir := paths.New(userDir, ".cirkit-create")
 	if err := dataDir.MkdirAll(); err != nil {
 		log.Panicf("Could not create data dir: %s", err)
 	}
@@ -85,7 +85,7 @@ func GetDefaultConfigDir() *paths.Path {
 		log.Panicf("Can't get user home dir: %s", err)
 	}
 
-	agentConfigDir := paths.New(configDir, "ArduinoCreateAgent")
+	agentConfigDir := paths.New(configDir, "CirkitCreateAgent")
 	if err := agentConfigDir.MkdirAll(); err != nil {
 		log.Panicf("Can't create config dir: %s", err)
 	}

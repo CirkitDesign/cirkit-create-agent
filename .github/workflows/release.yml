@@ -11,14 +11,22 @@ permissions:
 
 env:
   # As defined by the Taskfile's PROJECT_NAME variable
-  PROJECT_NAME: arduino-create-agent
+  PROJECT_NAME: cirkit-create-agent
   TARGET: "/CreateAgent/Stable/"
-  VERSION_TARGET: "arduino-create-static/agent-metadata/"
-  AWS_REGION: "us-east-1" # or https://github.com/aws/aws-cli/issues/5623
+  TARGET_WITHOUT_SLASH: "/CreateAgent/Stable"
+  TARGET_WITHOUT_LEADING_AND_TRAILING_SLASH: "CreateAgent/Stable"
+  VERSION_TARGET: "cirkit-create-static/agent-metadata/"
+  VERSION_TARGET_WITHOUT_SLASH: "cirkit-create-static/agent-metadata"
+
+  AZURE_STORAGE_ACCOUNT: abacasstorageaccnt
+  AZURE_CONTAINER_NAME: cirkitcreateagentupdates
+  AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+
+  # AWS_REGION: "us-east-1" # or https://github.com/aws/aws-cli/issues/5623
   KEYCHAIN: "sign.keychain"
   KEYCHAIN_PASSWORD: keychainpassword # Arbitrary password for a keychain that exists only for the duration of the job, so not secret
   GON_CONFIG_PATH: gon.config.hcl
-  INSTALLER_CERT_MAC_PATH: "/tmp/ArduinoCerts2020.p12"
+  INSTALLER_CERT_MAC_PATH: "/tmp/CirkitCerts2024.p12"
   AC_USERNAME: ${{ secrets.AC_USERNAME }} # used by gon
   AC_PASSWORD: ${{ secrets.AC_PASSWORD }} # used by gon
   AC_PROVIDER: ${{ secrets.AC_PROVIDER }} # used by gon
@@ -86,6 +94,9 @@ jobs:
           version: "3.x"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Print Taskfile
+        run: cat Taskfile.yml
+
       - name: Build the Agent for linux
         run: task go:build
         if: matrix.os == 'ubuntu-20.04'
@@ -133,18 +144,39 @@ jobs:
         run: go-selfupdate -platform windows-${{ matrix.arch }} ${{ env.PROJECT_NAME }}${{ matrix.ext }} ${TAG_VERSION}
         if: matrix.arch == '386' && matrix.os == 'windows-2019' && steps.prerelease.outputs.IS_PRE != 'true'
       
-      - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: "github_${{ env.PROJECT_NAME }}"
-          aws-region: ${{ env.AWS_REGION }}
-        if: steps.prerelease.outputs.IS_PRE != 'true'
+      # - name: configure aws credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+      #     role-session-name: "github_${{ env.PROJECT_NAME }}"
+      #     aws-region: ${{ env.AWS_REGION }}
+      #   if: steps.prerelease.outputs.IS_PRE != 'true'
 
-      - name: Upload autoupdate files to Arduino downloads servers
-        run: |
-          aws s3 sync public/ s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}
+      # - name: Upload autoupdate files to Arduino downloads servers
+      #   run: |
+      #     aws s3 sync public/ s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}
+      #   if: steps.prerelease.outputs.IS_PRE != 'true'
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Upload autoupdate files to Azure Blob Storage
         if: steps.prerelease.outputs.IS_PRE != 'true'
+        run: |
+          # Define variables
+          AZURE_BLOB_URL="https://${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ env.AZURE_CONTAINER_NAME }}/"
+
+          # Upload files to Azure Blob Storage
+          az storage blob upload-batch \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --destination ${{ env.AZURE_CONTAINER_NAME }}${{ env.TARGET_WITHOUT_SLASH }} \
+            --source ./public \
+            --auth-mode key \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
+            --overwrite true
+
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -157,21 +189,21 @@ jobs:
   create-macos-bundle:
     needs: build
 
-    # for now they are exaclty the same
+    # for now they are exactly the same
     strategy:
       matrix:
         arch: [amd64, arm64]
 
     runs-on: macos-12
     env:
-      EXE_PATH: "skel/ArduinoCreateAgent.app/Contents/MacOS/"
+      EXE_PATH: "skel/CirkitCreateAgent.app/Contents/MacOS/"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          repository: "bcmi-labs/arduino-create-agent-installer" # the repo which contains the bundle structure and icons
-          token: ${{ secrets.ARDUINO_CREATE_AGENT_CI_PAT }}
+          repository: "CirkitDesign/cirkit-create-agent-installer" # the repo which contains the bundle structure and icons
+      #     token: ${{ secrets.ARDUINO_CREATE_AGENT_CI_PAT }}
 
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -186,25 +218,25 @@ jobs:
       - name: Make executable
         run: chmod -v +x ${{ env.EXE_PATH }}${{ env.PROJECT_NAME }}
 
-      - name: Rename executable to Arduino_Create_Agent
-        run: mv -v ${{ env.EXE_PATH }}${{ env.PROJECT_NAME }} ${{ env.EXE_PATH }}Arduino_Create_Agent
+      - name: Rename executable to Cirkit_Create_Agent
+        run: mv -v ${{ env.EXE_PATH }}${{ env.PROJECT_NAME }} ${{ env.EXE_PATH }}Cirkit_Create_Agent
 
       - name: get year
         run: echo "YEAR=$(date "+%Y")" >> $GITHUB_ENV
 
       - name: Generate Info.plist for MacOS
         run: |
-          cat > skel/ArduinoCreateAgent.app/Contents/Info.plist <<EOF
+          cat > skel/CirkitCreateAgent.app/Contents/Info.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 
               <key>CFBundleIconFile</key>           <string>AppIcon.icns</string>
 
-              <key>CFBundleName</key>               <string>Arduino Create Agent</string>
-              <key>CFBundleExecutable</key>         <string>Arduino_Create_Agent</string>
-              <key>CFBundleIdentifier</key>         <string>create.arduino.cc</string>
+              <key>CFBundleName</key>               <string>Cirkit Create Agent</string>
+              <key>CFBundleExecutable</key>         <string>Cirkit_Create_Agent</string>
+              <key>CFBundleIdentifier</key>         <string>www.CirkitDesigner.com</string>
 
               <key>CFBundleVersion</key>            <string>${GITHUB_REF##*/}</string>
-              <key>NSHumanReadableCopyright</key>   <string>© Copyright ${{ env.YEAR }} Arduino LLC</string>
+              <key>NSHumanReadableCopyright</key>   <string>© Copyright ${{ env.YEAR }} Cirkit Design LLC</string>
               <key>CFBundleShortVersionString</key> <string>${GITHUB_REF##*/}</string>
               <key>LSUIElement</key>                <true/>
               <!-- Needed for Apache Callback -->
@@ -215,20 +247,20 @@ jobs:
           EOF
 
       - name: Tar bundle to keep permissions
-        run: tar -cvf ArduinoCreateAgent.app_${{ matrix.arch }}.tar -C skel/ .
+        run: tar -cvf CirkitCreateAgent.app_${{ matrix.arch }}.tar -C skel/ .
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           if-no-files-found: error
-          name: ArduinoCreateAgent.app_${{ matrix.arch }}
-          path: ArduinoCreateAgent.app_${{ matrix.arch }}.tar
+          name: CirkitCreateAgent.app_${{ matrix.arch }}
+          path: CirkitCreateAgent.app_${{ matrix.arch }}.tar
 
   # The notarize-macos job will download the macos bundle from the previous job, sign, notarize and re-upload it, uploading it also on s3 download servers for the autoupdate.
   notarize-macos:
     name: Notarize bundle
 
-    # for now they are exaclty the same
+    # for now they are exactly the same
     strategy:
       matrix:
         arch: [amd64, arm64]
@@ -243,10 +275,10 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: ArduinoCreateAgent.app_${{ matrix.arch }}
+          name: CirkitCreateAgent.app_${{ matrix.arch }}
 
       - name: un-Tar bundle
-        run: tar -xvf ArduinoCreateAgent.app_${{ matrix.arch }}.tar
+        run: tar -xvf CirkitCreateAgent.app_${{ matrix.arch }}.tar
 
       - name: Import Code-Signing Certificates
         run: |
@@ -286,11 +318,11 @@ jobs:
         run: |
           cat > "${{ env.GON_CONFIG_PATH }}" <<EOF
           # See: https://github.com/mitchellh/gon#configuration-file
-          source = ["ArduinoCreateAgent.app"]
-          bundle_id = "cc.arduino.${{ env.PROJECT_NAME }}"
+          source = ["CirkitCreateAgent.app"]
+          bundle_id = "com.cirkitdesigner.${{ env.PROJECT_NAME }}"
 
           sign {
-            application_identity = "Developer ID Application: ARDUINO SA (7KT7ZWMCJT)"
+            application_identity = "Developer ID Application: Austin Small (QNSD4P5EYU)"
             deep = true
           }
 
@@ -300,7 +332,7 @@ jobs:
         run: gon -log-level=debug -log-json "${{ env.GON_CONFIG_PATH }}"
 
       - name: Zip output app bundle
-        run: ditto -c -k ArduinoCreateAgent.app/ ArduinoCreateAgent.app_${{ matrix.arch }}_notarized.zip
+        run: ditto -c -k CirkitCreateAgent.app/ CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip
 
       - name: Remove gon used for code signing
         run: |
@@ -318,8 +350,8 @@ jobs:
           # See: https://github.com/Bearer/gon#configuration-file
 
           notarize {
-            path = "ArduinoCreateAgent.app_${{ matrix.arch }}_notarized.zip"
-            bundle_id = "cc.arduino.${{ env.PROJECT_NAME }}"
+            path = "CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip"
+            bundle_id = "com.cirkitdesigner.${{ env.PROJECT_NAME }}"
           }
 
           EOF
@@ -328,16 +360,52 @@ jobs:
         run: |
           gon -log-level=debug -log-json "${{ env.GON_CONFIG_PATH }}"
 
-      - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: "github_${{ env.PROJECT_NAME }}"
-          aws-region: ${{ env.AWS_REGION }}
-        if: ${{ needs.build.outputs.prerelease != 'true' }}
+      # - name: configure aws credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+      #     role-session-name: "github_${{ env.PROJECT_NAME }}"
+      #     aws-region: ${{ env.AWS_REGION }}
+      #   if: ${{ needs.build.outputs.prerelease != 'true' }}
 
-      - name: Upload autoupdate bundle to Arduino downloads servers
-        run: aws s3 cp ArduinoCreateAgent.app_${{ matrix.arch }}_notarized.zip s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}${GITHUB_REF/refs\/tags\//}/ # the version should be created in th the build job
+      # - name: Upload autoupdate bundle to Arduino downloads servers
+      #   run: aws s3 cp ArduinoCreateAgent.app_${{ matrix.arch }}_notarized.zip s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}${GITHUB_REF/refs\/tags\//}/ # the version should be created in th the build job
+      #   if: ${{ needs.build.outputs.prerelease != 'true' }}
+
+      # - name: Generate json file used for the new autoupdate
+      #   run: |
+      #     cat > darwin-${{ matrix.arch }}-bundle.json <<EOF
+      #     {
+      #         "Version": "${GITHUB_REF/refs\/tags\//}",
+      #         "Sha256": "$(shasum -a 256 ArduinoCreateAgent.app_${{ matrix.arch }}_notarized.zip | awk '{print $1}' |  xxd -r -p | base64)"
+      #     }
+      #     EOF
+      #   if: ${{ needs.build.outputs.prerelease != 'true' }}
+
+      # - name: Upload autoupdate files to Arduino downloads servers
+      #   run: |
+      #     aws s3 cp darwin-${{ matrix.arch }}-bundle.json s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}
+      #   if: ${{ needs.build.outputs.prerelease != 'true' }}
+
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Upload autoupdate bundle to Azure Blob Storage
+        run: |
+          # Define variables
+          AZURE_BLOB_URL="https://${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ env.AZURE_CONTAINER_NAME }}/"
+
+          # Upload the file
+          az storage blob upload \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --container-name ${{ env.AZURE_CONTAINER_NAME }} \
+            --name "${{ env.TARGET_WITHOUT_LEADING_AND_TRAILING_SLASH }}/${GITHUB_REF/refs\/tags\//}/CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip" \
+            --file "CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip" \
+            --auth-mode key \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }}
         if: ${{ needs.build.outputs.prerelease != 'true' }}
 
       - name: Generate json file used for the new autoupdate
@@ -345,21 +413,32 @@ jobs:
           cat > darwin-${{ matrix.arch }}-bundle.json <<EOF
           {
               "Version": "${GITHUB_REF/refs\/tags\//}",
-              "Sha256": "$(shasum -a 256 ArduinoCreateAgent.app_${{ matrix.arch }}_notarized.zip | awk '{print $1}' |  xxd -r -p | base64)"
+              "Sha256": "$(shasum -a 256 CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip | awk '{print $1}' |  xxd -r -p | base64)"
           }
           EOF
         if: ${{ needs.build.outputs.prerelease != 'true' }}
 
-      - name: Upload autoupdate files to Arduino downloads servers
+      - name: Upload autoupdate files to Azure Blob Storage
         run: |
-          aws s3 cp darwin-${{ matrix.arch }}-bundle.json s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}
+          # Define variables
+          AZURE_BLOB_URL="https://${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ env.AZURE_CONTAINER_NAME }}/"
+
+          # Upload the JSON file
+          az storage blob upload \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --container-name ${{ env.AZURE_CONTAINER_NAME }} \
+            --name "${{ env.TARGET_WITHOUT_LEADING_AND_TRAILING_SLASH }}/darwin-${{ matrix.arch }}-bundle.json" \
+            --file "darwin-${{ matrix.arch }}-bundle.json" \
+            --auth-mode key \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
+            --overwrite true
         if: ${{ needs.build.outputs.prerelease != 'true' }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ArduinoCreateAgent.app_${{ matrix.arch }}_notarized
-          path: ArduinoCreateAgent.app_${{ matrix.arch }}_notarized.zip
+          name: CirkitCreateAgent.app_${{ matrix.arch }}_notarized
+          path: CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip
           if-no-files-found: error
 
   # This job is responsible for generating the installers (using installbuilder)
@@ -370,7 +449,7 @@ jobs:
     env:
       # vars used by installbuilder
       INSTALLBUILDER_PATH: "/opt/installbuilder-23.11.0/bin/builder"
-      INSTALLER_VARS: "project.outputDirectory=$PWD project.version=${GITHUB_REF##*/} workspace=$PWD realname=Arduino_Create_Agent"
+      INSTALLER_VARS: "project.outputDirectory=$PWD project.version=${GITHUB_REF##*/} workspace=$PWD realname=Cirkit_Create_Agent"
 
     strategy:
       fail-fast: false # if one os is failing continue nonetheless
@@ -401,8 +480,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          repository: "bcmi-labs/arduino-create-agent-installer" # the repo which contains install.xml
-          token: ${{ secrets.ARDUINO_CREATE_AGENT_CI_PAT }}
+          repository: "CirkitDesign/cirkit-create-agent-installer" # the repo which contains install.xml
+          #token: ${{ secrets.ARDUINO_CREATE_AGENT_CI_PAT }}
 
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -415,27 +494,26 @@ jobs:
         run: chmod -v +x artifacts/${{ matrix.platform-name }}/${{ env.PROJECT_NAME }}*
         if: matrix.os == 'ubuntu-20.04'
 
-      - name: Rename executable to Arduino_Create_Agent
-        run: mv -v artifacts/${{ matrix.platform-name }}/${{ env.PROJECT_NAME }}${{ matrix.extension }} artifacts/${{ matrix.platform-name }}/Arduino_Create_Agent${{ matrix.extension }}
+      - name: Rename executable to Cirkit_Create_Agent
+        run: mv -v artifacts/${{ matrix.platform-name }}/${{ env.PROJECT_NAME }}${{ matrix.extension }} artifacts/${{ matrix.platform-name }}/Cirkit_Create_Agent${{ matrix.extension }}
 
       - name: Save InstallBuilder license to file
         run: echo "${{ secrets.INSTALLER_LICENSE }}" > /tmp/license.xml
 
       - name: Launch Bitrock installbuilder
-        run: ${{ env.INSTALLBUILDER_PATH }} build installer.xml ${{ matrix.installbuilder-name }} --verbose --license /tmp/license.xml  --setvars ${{ env.INSTALLER_VARS }} architecture=${{ matrix.arch }}
+        run: ${{ env.INSTALLBUILDER_PATH }} build installer.xml ${{ matrix.installbuilder-name }} --verbose --license /tmp/license.xml  --setvars ${{ env.INSTALLER_VARS }} architecture=${{ matrix.arch }} platform=${{ matrix.platform-name }} os=${{ matrix.os }} extension=${{ matrix.extension }} installerextension=${{ matrix.installer-extension }}
 
       - name: Generate archive
-        run: tar -czvf ArduinoCreateAgent-${GITHUB_REF##*/}-${{ matrix.platform-name }}-${{ matrix.arch }}-installer.tar.gz ArduinoCreateAgent-${GITHUB_REF##*/}-${{ matrix.platform-name }}-${{ matrix.arch }}-installer${{matrix.installer-extension}}
+        run: tar -czvf CirkitCreateAgent-${GITHUB_REF##*/}-${{ matrix.platform-name }}-${{ matrix.arch }}-installer.tar.gz CirkitCreateAgent-${GITHUB_REF##*/}-${{ matrix.platform-name }}-${{ matrix.arch }}-installer${{matrix.installer-extension}}
         if: matrix.os == 'ubuntu-20.04'
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ArduinoCreateAgent-${{ matrix.platform-name }}-${{ matrix.arch }}
-          path: ArduinoCreateAgent*
+          name: CirkitCreateAgent-${{ matrix.platform-name }}-${{ matrix.arch }}
+          path: CirkitCreateAgent*
           if-no-files-found: error
 
-  # This job will sign the Windows installer
   sign-windows:
     runs-on: [self-hosted, windows-sign-pc]
     needs: package
@@ -445,38 +523,37 @@ jobs:
         shell: bash
 
     env:
-      INSTALLER_CERT_WINDOWS_CER: "/tmp/cert.cer"
-      # We are hardcoding the path for signtool because is not present on the windows PATH env var by default.
-      # Keep in mind that this path could change when upgrading to a new runner version
-      SIGNTOOL_PATH: "C:/Program Files (x86)/Windows Kits/10/bin/10.0.19041.0/x86/signtool.exe"
-    
+      SIGNTOOL_PATH: "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x86/signtool.exe"
+      CERT_NAME: "Cirkit Design LLC"
+      CSP_NAME: "eToken Base Cryptographic Provider"
+      CONTAINER_NAME: ${{ secrets.INSTALLER_CERT_WINDOWS_CONTAINER }}
+      CERT_PASSWORD: ${{ secrets.INSTALLER_CERT_WINDOWS_PASSWORD }}
+
     strategy:
       matrix:
         arch: [amd64, 386]
-    
+
     steps:
+
+      - name: Clear old artifacts
+        run: |
+          rm -rf CirkitCreateAgent-*
+
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: ArduinoCreateAgent-windows-${{ matrix.arch }}
+          name: CirkitCreateAgent-windows-${{ matrix.arch }}
       
-      - name: Save Win signing certificate to file
-        run: echo "${{ secrets.INSTALLER_CERT_WINDOWS_CER }}" | base64 --decode > ${{ env.INSTALLER_CERT_WINDOWS_CER}}
-
       - name: Sign EXE
-        env:
-          CERT_PASSWORD: ${{ secrets.INSTALLER_CERT_WINDOWS_PASSWORD }}
-          CONTAINER_NAME: ${{ secrets.INSTALLER_CERT_WINDOWS_CONTAINER }}
-          # https://stackoverflow.com/questions/17927895/automate-extended-validation-ev-code-signing-with-safenet-etoken
-        run: | 
-          "${{ env.SIGNTOOL_PATH }}" sign -d "Arduino Create Agent" -f ${{ env.INSTALLER_CERT_WINDOWS_CER}} -csp "eToken Base Cryptographic Provider" -k "[{{${{ env.CERT_PASSWORD }}}}]=${{ env.CONTAINER_NAME }}" -fd sha256 -tr http://timestamp.digicert.com -td SHA256 -v "ArduinoCreateAgent-${GITHUB_REF##*/}-windows-${{ matrix.arch }}-installer.exe"
+        run: |
+          "${{ env.SIGNTOOL_PATH }}" sign -tr http://timestamp.sectigo.com -td sha256 -fd sha256 -a "CirkitCreateAgent-${GITHUB_REF##*/}-windows-${{ matrix.arch }}-installer.exe"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           if-no-files-found: error
-          name: ArduinoCreateAgent-windows-${{ matrix.arch }}-signed
-          path: ArduinoCreateAgent-*-windows-${{ matrix.arch }}-installer.exe
+          name: CirkitCreateAgent-windows-${{ matrix.arch }}-signed
+          path: CirkitCreateAgent-*-windows-${{ matrix.arch }}-installer.exe
 
   # This job will generate a dmg mac installer, sign/notarize it.
   generate-sign-dmg:
@@ -490,20 +567,20 @@ jobs:
       - name: Checkout repo with icons/background
         uses: actions/checkout@v4
         with:
-          repository: "bcmi-labs/arduino-create-agent-installer" # the repo which contains the icons/background
-          token: ${{ secrets.ARDUINO_CREATE_AGENT_CI_PAT }}
+          repository: "CirkitDesign/cirkit-create-agent-installer" # the repo which contains the icons/background
+          # token: ${{ secrets.ARDUINO_CREATE_AGENT_CI_PAT }}
 
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: ArduinoCreateAgent.app_${{ matrix.arch }}_notarized
-          path: ArduinoCreateAgent.app
+          name: CirkitCreateAgent.app_${{ matrix.arch }}_notarized
+          path: CirkitCreateAgent.app
 
       - name: unzip artifact
-        working-directory: ArduinoCreateAgent.app
+        working-directory: CirkitCreateAgent.app
         run: |
-          unzip ArduinoCreateAgent.app_${{ matrix.arch }}_notarized.zip
-          rm ArduinoCreateAgent.app_${{ matrix.arch }}_notarized.zip
+          unzip CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip
+          rm CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip
 
       - name: Install create-dmg
         run: brew install create-dmg
@@ -511,15 +588,15 @@ jobs:
       - name: Genarate DMG
         run: |
           create-dmg \
-            --volname "ArduinoCreateAgent" \
+            --volname "CirkitCreateAgent" \
             --background "installer_icons/background.tiff" \
             --window-pos 200 120 \
             --window-size 500 320 \
             --icon-size 80 \
-            --icon "ArduinoCreateAgent.app" 125 150 \
+            --icon "CirkitCreateAgent.app" 125 150 \
             --app-drop-link 375 150 \
-            "ArduinoCreateAgent-${GITHUB_REF##*/}-osx-${{ matrix.arch }}-installer.dmg" \
-            "ArduinoCreateAgent.app"
+            "CirkitCreateAgent-${GITHUB_REF##*/}-osx-${{ matrix.arch }}-installer.dmg" \
+            "CirkitCreateAgent.app"
 
       - name: Import Code-Signing Certificates
         run: |
@@ -549,16 +626,16 @@ jobs:
         # gon does not allow env variables in config file (https://github.com/mitchellh/gon/issues/20)
         run: |
           cat > gon.config_installer.hcl <<EOF
-          source = ["ArduinoCreateAgent-${GITHUB_REF##*/}-osx-${{ matrix.arch }}-installer.dmg"]
-          bundle_id = "cc.arduino.${{ env.PROJECT_NAME }}-installer"
+          source = ["CirkitCreateAgent-${GITHUB_REF##*/}-osx-${{ matrix.arch }}-installer.dmg"]
+          bundle_id = "com.cirkitdesigner.${{ env.PROJECT_NAME }}-installer"
 
           sign {
-            application_identity = "Developer ID Application: ARDUINO SA (7KT7ZWMCJT)"
+            application_identity = "Developer ID Application: Austin Small (QNSD4P5EYU)"
           }
 
           # Ask Gon for zip output to force notarization process to take place.
           zip {
-            output_path = "ArduinoCreateAgent.app_${{ matrix.arch }}_notarized.zip"
+            output_path = "CirkitCreateAgent.app_${{ matrix.arch }}_notarized.zip"
           }
           EOF
 
@@ -567,13 +644,13 @@ jobs:
 
       #  tar dmg file to keep executable permission
       - name: Tar files to keep permissions
-        run: tar -cvf ArduinoCreateAgent-${GITHUB_REF##*/}-osx-${{ matrix.arch }}-installer.tar ArduinoCreateAgent-${GITHUB_REF##*/}-osx-${{ matrix.arch }}-installer.dmg
+        run: tar -cvf CirkitCreateAgent-${GITHUB_REF##*/}-osx-${{ matrix.arch }}-installer.tar CirkitCreateAgent-${GITHUB_REF##*/}-osx-${{ matrix.arch }}-installer.dmg
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ArduinoCreateAgent-osx-${{ matrix.arch }}
-          path: ArduinoCreateAgent*.tar
+          name: CirkitCreateAgent-osx-${{ matrix.arch }}
+          path: CirkitCreateAgent*.tar
           if-no-files-found: error
 
   create-release:
@@ -582,10 +659,15 @@ jobs:
     needs: [build, generate-sign-dmg, sign-windows]
 
     steps:
+      - name: Set env vars
+        run: |
+          echo "TAG_VERSION=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # fetch all history for the create changelog step to work properly
+
 
       - name: Download artifact
         uses: actions/download-artifact@v4 # download all the artifacts
@@ -594,22 +676,27 @@ jobs:
       - name: prepare artifacts for the release
         run: |
           mkdir release
-          chmod -v +x ArduinoCreateAgent-linux-amd64/*.run
-          mv -v ArduinoCreateAgent-linux-amd64/* release/
-          cat ArduinoCreateAgent-osx-amd64/*.tar | tar -xvf - -i -C release/
-          rm -v release/._ArduinoCreateAgent*.dmg
-          mv -v ArduinoCreateAgent-windows*-signed/* release/
+          chmod -v +x CirkitCreateAgent-linux-amd64/*.run
+          mv -v CirkitCreateAgent-linux-amd64/* release/
+          cat CirkitCreateAgent-osx-amd64/*.tar | tar -xvf - -i -C release/
+          rm -v release/._CirkitCreateAgent*.dmg
+          mv -v CirkitCreateAgent-windows*-signed/* release/
+          # Create copies of the files with "latest" label
+          for file in release/*; do
+            latest_file=$(echo $file | sed "s/${TAG_VERSION}/latest/")
+            cp -v "$file" "$latest_file"
+          done
 
-      - name: VirusTotal Scan
-        id: virustotal_step
-        uses: crazy-max/ghaction-virustotal@v4
-        with:
-          vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
-          update_release_body: false # `true` won't work because trigger type is not release
-          files: |
-            release/*.exe
-            ${{ env.PROJECT_NAME }}-windows-2019-386/${{ env.PROJECT_NAME }}.exe
-            ${{ env.PROJECT_NAME }}-windows-2019-amd64/${{ env.PROJECT_NAME }}.exe
+      # - name: VirusTotal Scan
+      #   id: virustotal_step
+      #   uses: crazy-max/ghaction-virustotal@v4
+      #   with:
+      #     vt_api_key: ${{ secrets.VIRUSTOTAL_API_KEY }}
+      #     update_release_body: false # `true` won't work because trigger type is not release
+      #     files: |
+      #       release/*.exe
+      #       ${{ env.PROJECT_NAME }}-windows-2019-386/${{ env.PROJECT_NAME }}.exe
+      #       ${{ env.PROJECT_NAME }}-windows-2019-amd64/${{ env.PROJECT_NAME }}.exe
 
       - name: Create changelog
         uses: arduino/create-changelog@v1
@@ -625,9 +712,7 @@ jobs:
           echo "RBODY<<EOF" >> $GITHUB_OUTPUT
           echo "$(cat CHANGELOG.md)" >> $GITHUB_OUTPUT
           echo "<details close>" >> $GITHUB_OUTPUT
-          echo "<summary>VirusTotal analysis 🛡</summary>" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
-          echo "$(echo ${{ steps.virustotal_step.outputs.analysis}} | sed 's/release\///g' | sed 's/,/\n/g' | sed 's/^/- [/' | sed 's/=/](/' | sed 's/$/)/')" >> $GITHUB_OUTPUT
           echo "</details>" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
@@ -642,22 +727,61 @@ jobs:
           # (all the files we need are in the DIST_DIR root)
           artifacts: release/*
 
-      - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      # - name: configure aws credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+      #     role-session-name: "github_${{ env.PROJECT_NAME }}"
+      #     aws-region: ${{ env.AWS_REGION }}
+      #   if: ${{ needs.build.outputs.prerelease != 'true' }}
+
+      # - name: Upload release files on Arduino downloads servers
+      #   run: aws s3 sync release/ s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}
+      #   if: ${{ needs.build.outputs.prerelease != 'true' }}
+
+      # - name: Update version file (used by frontend to trigger autoupdate and create filename)
+      #   run: |
+      #     echo {\"Version\": \"${GITHUB_REF##*/}\"} > /tmp/agent-version.json
+      #     # TODO remove this when we will have a new frontend
+      #     aws s3 cp /tmp/agent-version.json s3://${{ env.VERSION_TARGET }}
+      #     aws s3 cp /tmp/agent-version.json s3://${{ secrets.DOWNLOADS_BUCKET }}/agent-metadata/
+      #   if: ${{ needs.build.outputs.prerelease != 'true' }}
+
+      - name: Login to Azure
+        uses: azure/login@v1
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: "github_${{ env.PROJECT_NAME }}"
-          aws-region: ${{ env.AWS_REGION }}
-        if: ${{ needs.build.outputs.prerelease != 'true' }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Upload release files on Arduino downloads servers
-        run: aws s3 sync release/ s3://${{ secrets.DOWNLOADS_BUCKET }}${{ env.TARGET }}
+      - name: Upload release files to Azure Blob Storage
         if: ${{ needs.build.outputs.prerelease != 'true' }}
+        run: |
+          AZURE_BLOB_URL="https://${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/${{ env.AZURE_CONTAINER_NAME }}/"
+          az storage blob upload-batch \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --destination ${{ env.AZURE_CONTAINER_NAME }}${{ env.TARGET_WITHOUT_SLASH }} \
+            --source release \
+            --auth-mode key \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
+            --overwrite true
 
-      - name: Update version file (used by frontend to trigger autoupdate and create filename)
+      - name: Update version file in Azure Blob Storage
+        if: ${{ needs.build.outputs.prerelease != 'true' }}
         run: |
           echo {\"Version\": \"${GITHUB_REF##*/}\"} > /tmp/agent-version.json
-          # TODO remove this when we will have a new frontend
-          aws s3 cp /tmp/agent-version.json s3://${{ env.VERSION_TARGET }}
-          aws s3 cp /tmp/agent-version.json s3://${{ secrets.DOWNLOADS_BUCKET }}/agent-metadata/
-        if: ${{ needs.build.outputs.prerelease != 'true' }}
+          az storage blob upload \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --container-name ${{ env.AZURE_CONTAINER_NAME }} \
+            --name "${{ env.VERSION_TARGET_WITHOUT_SLASH }}/agent-version.json" \
+            --file /tmp/agent-version.json \
+            --auth-mode key \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
+            --overwrite true
+          az storage blob upload \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --container-name ${{ env.AZURE_CONTAINER_NAME }} \
+            --name "agent-metadata/agent-version.json" \
+            --file /tmp/agent-version.json \
+            --auth-mode key \
+            --account-key ${{ secrets.AZURE_STORAGE_KEY }} \
+            --overwrite true
+

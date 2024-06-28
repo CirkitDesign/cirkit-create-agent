@@ -33,7 +33,7 @@ var launchdAgentDefinition []byte
 func getLaunchdAgentPath() *paths.Path {
 	homeDir := GetDefaultHomeDir()
 	launchAgentsPath := homeDir.Join("Library", "LaunchAgents")
-	agentPlistPath := launchAgentsPath.Join("ArduinoCreateAgent.plist")
+	agentPlistPath := launchAgentsPath.Join("CirkitCreateAgent.plist")
 
 	if err := os.MkdirAll(launchAgentsPath.String(), 0755); err != nil {
 		log.Panicf("Could not create ~/Library/LaunchAgents directory: %s", err)
